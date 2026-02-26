@@ -6,7 +6,7 @@ from . import crud, models
 from .database import SessionLocal, engine
 from datetime import datetime
 
-# This line is now commented out. 
+# This line is now commented out.
 # We will no longer automatically create/delete tables on startup.
 # models.Base.metadata.create_all(bind=engine)
 

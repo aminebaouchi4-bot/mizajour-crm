@@ -64,7 +64,7 @@
             </div>
 
             <!-- Message display area -->
-            <div class="flex-1 p-4 overflow-y-auto">
+            <div id="message-container" class="flex-1 p-4 overflow-y-auto">
                 {% for message in messages %}
                 <div class="flex {% if message.sender == 'user' %}justify-start{% else %}justify-end{% endif %} mb-4">
                     <div class="max-w-md p-3 rounded-lg {% if message.sender == 'user' %}bg-gray-700{% else %}bg-blue-600 text-white{% endif %}">
@@ -102,5 +102,27 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- === AUTO-REFRESH SCRIPT START === -->
+    <script>
+        document.addEventListener('DOMContentLoaded', (event ) => {
+            // أولاً، تحقق مما إذا كنا في صفحة محادثة
+            {% if selected_customer %}
+                
+                // اجعل صندوق الرسائل ينزل للأسفل عند تحميل الصفحة
+                const messageContainer = document.getElementById('message-container');
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+
+                // ثانياً، قم بتشغيل دالة التحديث كل 7 ثوانٍ
+                const intervalId = setInterval(function() {
+                    console.log('Refreshing conversation...');
+                    window.location.reload();
+                }, 7000); // 7000ms = 7 seconds
+
+            {% endif %}
+        });
+    </script>
+    <!-- === AUTO-REFRESH SCRIPT END === -->
+
 </body>
 </html>
