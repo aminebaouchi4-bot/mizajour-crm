@@ -1,19 +1,16 @@
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-import os
 
-# تحميل المتغيرات من ملف .env الموجود في جذر المشروع
+# Load environment variables from .env file
 load_dotenv()
 
-# قراءة رابط قاعدة البيانات من متغيرات البيئة
+# Get the database URL from environment variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# التأكد من أن الرابط موجود قبل المتابعة
-if not DATABASE_URL:
-    raise ValueError("لم يتم العثور على متغير DATABASE_URL. تأكد من وجوده في ملف .env")
-
+# Create the SQLAlchemy engine
 engine = create_engine(DATABASE_URL)
+
+# Create a configured "Session" class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()

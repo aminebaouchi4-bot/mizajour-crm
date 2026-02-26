@@ -6,8 +6,9 @@ from . import crud, models
 from .database import SessionLocal, engine
 from datetime import datetime
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# This line is now commented out. 
+# We will no longer automatically create/delete tables on startup.
+# models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -53,21 +54,11 @@ def send_message(
     message: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    # الخطوة 1: ابحث عن المحادثة
     conversation = crud.get_conversation_by_customer_id(db, customer_id=customer_id)
     
-    # الخطوة 2: إذا لم يتم العثور على محادثة، قم بإنشاء واحدة جديدة فوراً
     if not conversation:
-        # تأكد من وجود العميل أولاً (إجراء أمان إضافي)
-        customer = crud.get_customer(db, customer_id=customer_id)
-        if not customer:
-            # هذا لا يجب أن يحدث، ولكنه حماية جيدة
-            return HTMLResponse("Customer not found", status_code=404)
-        
-        # قم بإنشاء المحادثة وربطها بالعميل
         conversation = crud.create_conversation(db, customer_id=customer_id)
 
-    # الخطوة 3: الآن بعد أن تأكدنا من وجود محادثة، قم بإنشاء الرسالة
     crud.create_message(
         db=db,
         conversation_id=conversation.id,
@@ -76,7 +67,6 @@ def send_message(
         timestamp=datetime.utcnow()
     )
     
-    # الخطوة 4: أعد توجيه المستخدم ليرى رسالته
     return RedirectResponse(url=f"/customer/{customer_id}", status_code=303)
 
 # Dummy endpoint for WhatsApp webhook verification
