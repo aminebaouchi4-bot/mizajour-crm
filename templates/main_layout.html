@@ -1,75 +1,106 @@
-<!-- templates/main_layout.html - الإصدار الذهبي (مستقر) -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mizajour.ai CRM</title>
+    <title>Mizajour AI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-300 antialiased">
+<body class="bg-gray-900 text-white font-sans">
     <div class="flex h-screen">
-        <!-- الشريط الجانبي (قائمة العملاء ) -->
-        <aside class="w-1/3 bg-slate-800 p-4 overflow-y-auto">
-            <h1 class="text-xl font-bold text-white mb-4">العملاء</h1>
-            <nav>
+        <!-- Sidebar -->
+        <div class="w-1/4 bg-gray-800 border-l border-gray-700 flex flex-col">
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-gray-700">
+                <h1 class="text-xl font-bold">Mizajour AI</h1>
+                <span class="text-sm text-gray-400">Customer Conversations</span>
+            </div>
+            <!-- Customer List -->
+            <div class="flex-1 overflow-y-auto">
                 <ul>
-                    {% for c in customers %}
-                    <li>
-                        <a href="/customer/{{ c.id }}" 
-                           class="block p-3 rounded-lg hover:bg-slate-700
-                                  {% if selected_customer and selected_customer.id == c.id %} bg-sky-600 text-white {% endif %}">
-                            <p class="font-semibold">{{ c.name }}</p>
-                            <p class="text-sm text-slate-400">{{ c.phone_number }}</p>
-                        </a>
-                    </li>
+                    {% for customer in customers %}
+                    <a href="/customer/{{ customer.id }}" class="block">
+                        <li class="p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer {% if selected_customer and selected_customer.id == customer.id %} bg-blue-600 {% endif %}">
+                            <div class="flex justify-between items-center">
+                                <div class="font-bold">{{ customer.name }}</div>
+                                <div class="text-xs text-gray-400">{{ customer.phone_number }}</div>
+                            </div>
+                        </li>
+                    </a>
                     {% endfor %}
                 </ul>
-            </nav>
-        </aside>
+            </div>
+        </div>
 
-        <!-- الجزء الرئيسي (المحادثة) -->
-        <main class="w-2/3 flex flex-col">
+        <!-- Main Content -->
+        <div class="w-3/4 flex flex-col">
             {% if selected_customer %}
-            <!-- رأس المحادثة -->
-            <header class="bg-slate-800 border-b border-slate-700 p-4">
-                <h2 class="text-xl font-bold text-white">{{ selected_customer.name }}</h2>
-            </header>
+            <!-- Conversation Header -->
+            <div class="p-4 bg-gray-800 border-b border-gray-700 flex items-center">
+                <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mr-4">
+                    <span class="text-xl font-bold">{{ selected_customer.name[0] }}</span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold">{{ selected_customer.name }}</h2>
+                    <p class="text-sm text-green-400">Online</p>
+                </div>
+            </div>
 
-            <!-- صندوق الرسائل -->
-            <div class="flex-grow p-6 overflow-y-auto bg-slate-900 space-y-4">
-                {% for message in selected_customer.messages %}
-                    {% if message.sender_type == 'customer' %}
-                    <div class="flex justify-start">
-                        <div class="max-w-md p-3 rounded-lg bg-slate-700">
-                            <p>{{ message.content }}</p>
-                        </div>
+            <!-- Message display area -->
+            <div class="flex-1 p-4 overflow-y-auto">
+                {% for message in messages %}
+                <div class="flex {% if message.sender == 'user' %}justify-start{% else %}justify-end{% endif %} mb-4">
+                    <div class="max-w-md p-3 rounded-lg {% if message.sender == 'user' %}bg-gray-700{% else %}bg-blue-600 text-white{% endif %}">
+                        <p>{{ message.content }}</p>
+                        <span class="text-xs text-gray-400 mt-1 block">{{ message.timestamp.strftime('%H:%M' ) }}</span>
                     </div>
-                    {% else %}
-                    <div class="flex justify-end">
-                        <div class="max-w-md p-3 rounded-lg bg-sky-600 text-white">
-                            <p>{{ message.content }}</p>
-                        </div>
-                    </div>
-                    {% endif %}
+                </div>
                 {% endfor %}
             </div>
 
-            <!-- حقل إدخال الرسالة (معطل) -->
-            <footer class="p-4 bg-slate-800">
-                <div class="relative">
-                    <input type="text" placeholder="إرسال الرسائل معطل حالياً..." 
-                           class="w-full bg-slate-700 rounded-lg p-3 pr-12 text-white" disabled>
-                </div>
-            </footer>
+            <!-- Message Input Form -->
+            <div class="p-4 bg-gray-800 border-t border-gray-700">
+                <form method="post" action="/send_message/{{ selected_customer.id }}">
+                    <div class="flex items-center">
+                        <input type="text" name="message" placeholder="اكتب رسالتك هنا..." autocomplete="off"
+                               class="flex-1 bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit"
+                                class="mr-3 bg-blue-600 text-white rounded-full p-3 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
 
             {% else %}
-            <!-- رسالة عند عدم اختيار محادثة -->
-            <div class="flex-grow flex items-center justify-center bg-slate-900">
-                <p class="text-slate-500 text-lg">اختر محادثة من القائمة لعرضها هنا.</p>
+            <!-- Placeholder for when no customer is selected -->
+            <div class="flex-1 flex items-center justify-center">
+                <div class="text-center">
+                    <i class="fas fa-comments fa-3x text-gray-600"></i>
+                    <p class="mt-4 text-gray-500">الرجاء تحديد محادثة من القائمة</p>
+                </div>
             </div>
             {% endif %}
-        </main>
+        </div>
     </div>
 </body>
 </html>
