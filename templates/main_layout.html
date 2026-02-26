@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mizajour.ai</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-300 antialiased">
+
+    <!-- الشريط الجانبي الثابت -->
+    <aside class="fixed top-0 right-0 h-full w-1/3 bg-slate-800/50 border-l border-slate-700 flex flex-col">
+        <header class="p-4 border-b border-slate-700">
+            <h1 class="text-xl font-bold text-white">Mizajour.ai - العملاء</h1>
+        </header>
+        <div class="overflow-y-auto flex-grow">
+            <ul class="divide-y divide-slate-700">
+                {% for customer_item in all_customers %}
+                <li class="hover:bg-slate-700/50">
+                    <a href="/customer/{{ customer_item.id }}" class="block p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-white">{{ customer_item.name or customer_item.phone_number }}</span>
+                            {% if customer_item.lead_status == 'Hot' %}
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-rose-500/20 text-rose-400">Hot</span>
+                            {% elif customer_item.lead_status == 'Warm' %}
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-400">Warm</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-sky-500/20 text-sky-400">New</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1 truncate">
+                            آخر رسالة هنا...
+                        </p>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
+    <!-- منطقة المحتوى الرئيسية مع هامش لتعويض الشريط الجانبي -->
+    <main class="mr-[33.333333%]"> <!-- 1/3 of the width -->
+        <div class="flex flex-col h-screen">
+            {% if selected_customer %}
+                <!-- عرض المحادثة -->
+                <header class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">محادثة مع: {{ selected_customer.name or selected_customer.phone_number }}</h2>
+                    <a href="/" class="text-sky-400 hover:underline text-sm">&larr; العودة</a>
+                </header>
+
+                <div id="chat-box" class="flex-grow p-6 overflow-y-auto space-y-4">
+                    {% for message in selected_customer.messages %}
+                        {% if message.direction == 'inbound' %}
+                        <div class="flex justify-start">
+                            <div class="max-w-xs lg:max-w-md p-3 rounded-lg rounded-br-none bg-slate-700 text-white">
+                                <p>{{ message.body }}</p>
+                                <p class="text-xs text-slate-400 mt-2 text-left">{{ message.timestamp.strftime('%H:%M' ) }}</p>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="flex justify-end">
+                            <div class="max-w-xs lg:max-w-md p-3 rounded-lg rounded-bl-none bg-sky-600 text-white">
+                                <p>{{ message.body }}</p>
+                                <p class="text-xs text-sky-200 mt-2 text-left">{{ message.timestamp.strftime('%H:%M') }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <footer class="p-4 bg-slate-800/50 border-t border-slate-700">
+                    <div id="error-message" class="text-rose-400 text-sm mb-2"></div>
+                    <div class="flex items-center gap-4">
+                        <input id="message-input" type="text" placeholder="اكتب رسالتك هنا..." class="flex-grow bg-slate-700 text-white placeholder-slate-400 rounded-lg px-4 py-2 border border-transparent focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <button id="send-button" type="button" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">إرسال</button>
+                    </div>
+                </footer>
+
+            {% else %}
+                <!-- عرض رسالة "اختر محادثة" -->
+                <div class="flex-grow flex items-center justify-center">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-white">ابدأ محادثة</h2>
+                        <p class="text-slate-400 mt-2">اختر عميلاً من القائمة على اليمين لعرض المحادثة.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <script>
+        // ... كود JavaScript يبقى كما هو بدون أي تغيير ...
+        // --- الكود الآمن ---
+
+        function playNotificationSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        const customerId = "{{ selected_customer.id if selected_customer else 'null' }}";
+        
+        // --- قسم WebSocket (يعمل فقط في صفحة المحادثة) ---
+        if (customerId && customerId !== 'null') {
+            const chatBox = document.getElementById('chat-box');
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                const socket = new WebSocket(`wss://${window.location.host}/ws/${customerId}`);
+
+                socket.onopen = function(event) { console.log("WebSocket connection established for customer " + customerId); };
+                socket.onclose = function(event) { console.log("WebSocket connection closed."); };
+                socket.onerror = function(error) { console.error("WebSocket Error: ", error); };
+
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    console.log("New message received via WebSocket:", message);
+                    playNotificationSound();
+
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('flex');
+                    let messageContent = '';
+
+                    if (message.direction === 'inbound') {
+                        messageElement.classList.add('justify-start');
+                        messageContent = `
+                            <div class="max-w-xs lg:max-w-md p-3 rounded-lg rounded-br-none bg-slate-700 text-white">
+                                <p>${message.body}</p>
+                                <p class="text-xs text-slate-400 mt-2 text-left">${new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>`;
+                    } else {
+                        messageElement.classList.add('justify-end');
+                        messageContent = `
+                            <div class="max-w-xs lg:max-w-md p-3 rounded-lg rounded-bl-none bg-sky-600 text-white">
+                                <p>${message.body}</p>
+                                <p class="text-xs text-sky-200 mt-2 text-left">${new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>`;
+                    }
+                    messageElement.innerHTML = messageContent;
+                    chatBox.appendChild(messageElement);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                };
+            }
+        }
+
+        // --- قسم إرسال الرسائل (يعمل فقط في صفحة المحادثة) ---
+        const sendButton = document.getElementById('send-button');
+        const messageInput = document.getElementById('message-input');
+        const errorMessage = document.getElementById('error-message');
+
+        async function sendMessage() {
+            if (!messageInput || !sendButton) return;
+            const message = messageInput.value;
+            if (!message.trim()) return;
+
+            sendButton.disabled = true;
+            if (errorMessage) errorMessage.textContent = '';
+
+            try {
+                const response = await fetch(`/customer/${customerId}/send-message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to send message');
+                }
+                messageInput.value = '';
+            } catch (error) {
+                console.error('Send message error:', error);
+                if (errorMessage) errorMessage.textContent = 'فشل الإرسال: ' + error.message;
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // التحقق من وجود الأزرار قبل إضافة المستمعين
+        if (sendButton && messageInput) {
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
